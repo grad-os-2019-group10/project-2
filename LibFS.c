@@ -7,7 +7,7 @@
 #include "LibFS.h"
 
 // set to 1 to have detailed debug print-outs and 0 to have none
-#define FSDEBUG 0
+#define FSDEBUG 1
 
 #if FSDEBUG
 #define dprintf printf
@@ -15,6 +15,7 @@
 #define dprintf noprintf
 void noprintf(char* str, ...) {}
 #endif
+
 
 // the file system partitions the disk into five parts:
 
@@ -32,8 +33,8 @@ void noprintf(char* str, ...) {}
 // the total number of bytes and sectors needed for the inode bitmap;
 // we use one bit for each inode (whether it's a file or directory) to
 // indicate whether the particular inode in the inode table is in use
-#define INODE_BITMAP_SIZE ((MAX_FILES+7)/8)
-#define INODE_BITMAP_SECTORS ((INODE_BITMAP_SIZE+SECTOR_SIZE-1)/SECTOR_SIZE)
+#define INODE_BITMAP_SIZE ((MAX_FILES+7)/8) //why 7? doing ceilling!
+#define INODE_BITMAP_SECTORS ((INODE_BITMAP_SIZE+SECTOR_SIZE-1)/SECTOR_SIZE) //ceilling!
 
 // 3. the sector bitmap (one or more sectors), which indicates whether
 // the particular sector in the disk is currently in use
@@ -44,7 +45,7 @@ void noprintf(char* str, ...) {}
 // sector of the disk to indicate whether the sector is in use or not
 #define SECTOR_BITMAP_SIZE ((TOTAL_SECTORS+7)/8)
 #define SECTOR_BITMAP_SECTORS ((SECTOR_BITMAP_SIZE+SECTOR_SIZE-1)/SECTOR_SIZE)
-
+char all_bitmap[INODE_BITMAP_SECTORS+INODE_BITMAP_SECTORS][512];
 // 4. the inode table (one or more sectors), which contains the inodes
 // stored consecutively
 #define INODE_TABLE_START_SECTOR (SECTOR_BITMAP_START_SECTOR+SECTOR_BITMAP_SECTORS)
@@ -100,6 +101,7 @@ int osErrno;
 // the name of the disk backstore file (with which the file system is booted)
 static char bs_filename[1024];
 
+
 /* the following functions are internal helper functions */
 
 // check magic number in the superblock; return 1 if OK, and 0 if not
@@ -118,6 +120,39 @@ static int check_magic()
 static void bitmap_init(int start, int num, int nbits)
 {
   /* YOUR CODE */
+  int pos;
+  int set_bit = 1;
+  int i, cnt=0, b;
+  char _bitmap[SECTOR_SIZE];
+
+  for(i=0;i<num;i++)
+  {
+	  //each sector
+	  memset(_bitmap, 0, SECTOR_SIZE);
+	  for(pos=0;pos<512;pos++)
+	  {
+		//each sector has 512 bytes
+		//set 512 bytes
+		//each byte has 8 bits
+		
+		for(b=7;b>=0;b--)
+		{
+			if(cnt<=nbits)
+        	                set_bit = 1 << b;
+	                else
+                	        set_bit = 0;
+                	cnt++;
+			_bitmap[pos] = _bitmap[pos] | set_bit;
+
+		}
+		
+	  }
+
+	  Disk_Write(start+i, _bitmap);
+
+	  
+  }
+  
 }
 
 // set the first unused bit from a bitmap of 'nbits' bits (flip the
@@ -126,8 +161,42 @@ static void bitmap_init(int start, int num, int nbits)
 static int bitmap_first_unused(int start, int num, int nbits)
 {
   /* YOUR CODE */
+  
+  int pos = 0;
+  int indx;
+  int offset;
+  int j=0;
+  unsigned int set_bit = 1;
+  char t;
+  int k=0;
+  int i;
+  char _bitmap[SECTOR_SIZE];
+  for(i=0;i<num;i++)
+  {
+	  Disk_Read(start+i, _bitmap);
+	  for(j=0;j<SECTOR_SIZE;j++)
+	  {
+		for(k=7;k>=0;k--)
+		{
+			set_bit = 1 << k;
+			t = _bitmap[j] & set_bit;
+			if(t==0)
+			{
+				_bitmap[j] = _bitmap[j] | set_bit;
+				Disk_Write(start+i, _bitmap);
+				return pos;
+			}
+			
+			pos++;
+			
+		}
+	  }
+	  
+  }
+  
   return -1;
 }
+
 
 // reset the i-th bit of a bitmap with 'num' sectors starting from
 // 'start' sector; return 0 if successful, -1 otherwise
@@ -144,7 +213,7 @@ static int bitmap_reset(int start, int num, int ibit)
 static int illegal_filename(char* name)
 {
   /* YOUR CODE */
-  return 1; 
+  return 0; 
 }
 
 // return the child inode of the given file name 'fname' from the
