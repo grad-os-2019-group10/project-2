@@ -121,11 +121,11 @@ static void bitmap_init(int start, int num, int nbits)
 {
   /* YOUR CODE */
   int pos;
-  int set_bit = 1;
+  int set_bit;
   int i, cnt=0, b;
   char _bitmap[SECTOR_SIZE];
 
-  for(i=0;i<num;i++)
+  for(i=start;i<start+num;i++)
   {
 	  //each sector
 	  memset(_bitmap, 0, SECTOR_SIZE);
@@ -135,10 +135,10 @@ static void bitmap_init(int start, int num, int nbits)
 		//set 512 bytes
 		//each byte has 8 bits
 		
-		for(b=7;b>=0;b--)
+		for(b=0;b<8;b++)
 		{
 			if(cnt<=nbits)
-        	                set_bit = 1 << b;
+        	                set_bit = 128 >> b;
 	                else
                 	        set_bit = 0;
                 	cnt++;
@@ -148,7 +148,7 @@ static void bitmap_init(int start, int num, int nbits)
 		
 	  }
 
-	  Disk_Write(start+i, _bitmap);
+	  Disk_Write(i, _bitmap);
 
 	  
   }
@@ -166,24 +166,24 @@ static int bitmap_first_unused(int start, int num, int nbits)
   int indx;
   int offset;
   int j=0;
-  unsigned int set_bit = 1;
+  unsigned int set_bit;
   char t;
   int k=0;
   int i;
   char _bitmap[SECTOR_SIZE];
-  for(i=0;i<num;i++)
+  for(i=start;i<start+num;i++)
   {
-	  Disk_Read(start+i, _bitmap);
+	  Disk_Read(i, _bitmap);
 	  for(j=0;j<SECTOR_SIZE;j++)
 	  {
-		for(k=7;k>=0;k--)
+		for(k=0;k<8;k++)
 		{
-			set_bit = 1 << k;
+			set_bit = 128 >> k;
 			t = _bitmap[j] & set_bit;
 			if(t==0)
 			{
 				_bitmap[j] = _bitmap[j] | set_bit;
-				Disk_Write(start+i, _bitmap);
+				Disk_Write(i, _bitmap);        
 				return pos;
 			}
 			
@@ -203,6 +203,39 @@ static int bitmap_first_unused(int start, int num, int nbits)
 static int bitmap_reset(int start, int num, int ibit)
 {
   /* YOUR CODE */
+  
+  int pos = 0;
+  int indx;
+  int offset;
+  int j=0;
+  unsigned int set_bit;
+  char t;
+  int k=0;
+  int i;
+  char _bitmap[SECTOR_SIZE];
+  for(i=start;i<num+start;i++)
+  {
+	  Disk_Read(i, _bitmap);
+	  for(j=0;j<SECTOR_SIZE;j++)
+	  {
+		for(k=0;k<8;k++)
+		{
+			set_bit = 128 >> k;
+			//t = _bitmap[j] & set_bit;
+			if(pos==ibit)
+			{
+				_bitmap[j] = _bitmap[j] & (~set_bit);
+				Disk_Write(i, _bitmap);
+				return 0;
+			}
+			
+			pos++;
+			
+		}
+	  }
+	  
+  }
+  
   return -1;
 }
 
@@ -213,7 +246,27 @@ static int bitmap_reset(int start, int num, int ibit)
 static int illegal_filename(char* name)
 {
   /* YOUR CODE */
-  return 0; 
+int i,count=0;
+    //printf("%d",strlen(name));
+    if(strlen(name)<=MAX_NAME-1)
+    {
+    for(i=0;i<strlen(name);i++)
+    {
+        if((name[i]>=65 && name[i]<=90) ||(name[i]>=97 && name[i]<=122)||(name[i]>=48 && name[i]<=57) || name[i] == 45 || name[i] == 46 || name[i] == 95)
+            count=count;
+           // printf("%c\n",name[i]);
+        else
+            count++;
+    }
+    if(count == 0)
+        return 0;
+    else
+        return 1;
+    }
+    else
+        return 1;
+        //printf("Illegal Filename. More than Maximum Name Size.");
+  //return 0; 
 }
 
 // return the child inode of the given file name 'fname' from the
