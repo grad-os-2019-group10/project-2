@@ -33,7 +33,7 @@ void noprintf(char* str, ...) {}
 // the total number of bytes and sectors needed for the inode bitmap;
 // we use one bit for each inode (whether it's a file or directory) to
 // indicate whether the particular inode in the inode table is in use
-#define INODE_BITMAP_SIZE ((MAX_FILES+7)/8) //why 7? doing ceilling!
+#define INODE_BITMAP_SIZE ((MAX_FILES+7)/8) //why 7? doing  ceilling!
 #define INODE_BITMAP_SECTORS ((INODE_BITMAP_SIZE+SECTOR_SIZE-1)/SECTOR_SIZE) //ceilling!
 
 // 3. the sector bitmap (one or more sectors), which indicates whether
