@@ -903,7 +903,22 @@ int File_Write(int fd, void* buffer, int size)
 int File_Seek(int fd, int offset)
 {
   /* YOUR CODE */
-  return 0;
+	int file_inode = open_files[fd].inode; // file_inode will have the inode number for the file where we want to update the current location of the file pointer.
+                                               //Here, open_files is a structure containing the value of inode with variable name inode.
+	if(!file_inode) {          // If the file is not open (i.e open_files[fd].inode returns 0), it will show the error message and return -1, and set osErrno to E_BAD_FD.
+		osErrno = E_BAD_FD; 
+		return -1;
+	}
+
+	if (open_files[fd].size < offset || offset < 0){  // If offset is larger than the size of the file or negative, it return -1 and set osErrno to E_SEEK_OUT_OF_BOUNDS;
+		osErrno = E_SEEK_OUT_OF_BOUNDS;
+		return -1;
+	}
+
+	
+	open_files[fd].pos = offset; // pos will be updated with new offset value
+
+	return open_files[fd].pos;
 }
 
 int File_Close(int fd)
