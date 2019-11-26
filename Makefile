@@ -3,7 +3,7 @@
 CC     = gcc
 OPTS   = -O -Wall 
 INCS   = 
-LIBS   = -R. -L. -lFS -lDisk
+LIBS   = -Wl,-R. -L. -lFS -lDisk
 SHLIBS = libDisk.so libFS.so
 
 SRCS   = main.c \
@@ -18,7 +18,7 @@ TARGETS = $(SRCS:.c=.exe)
 all: $(TARGETS)
 
 clean:
-	rm -f $(TARGETS) $(OBJS) *~
+	rm -f $(TARGETS) $(OBJS) *.o *.so *~
 
 reset:	clean
 	make -f Makefile.LibDisk clean
