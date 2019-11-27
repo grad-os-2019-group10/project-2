@@ -163,8 +163,6 @@ static int bitmap_first_unused(int start, int num, int nbits)
   /* YOUR CODE */
   
   int pos = 0;
-  int indx;
-  int offset;
   int j=0;
   unsigned int set_bit;
   char t;
@@ -205,11 +203,8 @@ static int bitmap_reset(int start, int num, int ibit)
   /* YOUR CODE */
   
   int pos = 0;
-  int indx;
-  int offset;
   int j=0;
   unsigned int set_bit;
-  char t;
   int k=0;
   int i;
   char _bitmap[SECTOR_SIZE];
@@ -507,6 +502,28 @@ int create_file_or_directory(int type, char* pathname)
 int remove_inode(int type, int parent_inode, int child_inode)
 {
   /* YOUR CODE */
+
+  // first, read the sector containing the child inode
+
+  // calculate the child's sector
+  int child_offset = child_inode / INODES_PER_SECTOR;
+  int child_sector = INODE_TABLE_START_SECTOR + child_offset; 
+
+  dprintf("... removing inode %d from parent %d\n", child_inode, parent_inode);
+
+  // an inode size is guaranteed to be less than the size of a sector, so
+  // it's safe to use SECTOR_SIZE for this buffer's size
+  char buffer[SECTOR_SIZE];
+
+  // make sure read was successful
+  if (Disk_Read(child_sector, buffer) == 0)
+  {
+    // read child inode from table
+    dprintf("... reading child inode from table at sector %d\n", child_sector);
+
+    // UNDER CONSTRUCTION
+  }
+
   return -1;
 }
 
@@ -733,11 +750,11 @@ int File_Open(char* file)
 int File_Read(int fd, void* buffer, int size)
 {
   /* YOUR CODE */
-	int File_Read(int fd, void* buffer, int size) {
+
 	int file_inode = open_files[fd].inode; // file_inode will have the inode number for the file to be read.
                                               //Here, open_files is a structure containing the value of inode with variable name inode.
 	if(!file_inode) // If the file is not open (i.e open_files[fd].inode returns 0), return -1, and set osErrno to E_BAD_FD.
-        {  
+  {  
 		osErrno = E_BAD_FD;  
 		return -1;
 	}
@@ -809,7 +826,7 @@ int File_Write(int fd, void* buffer, int size)
 	}
 
 	// load the disk sector containing the child inode
-	int inode_sector = INODE_TABLE_START_SECTOR+f_inode/INODES_PER_SECTOR; //inode_sector will have the sector number that contains file_inode which is our required file inode.
+	int inode_sector = INODE_TABLE_START_SECTOR+file_inode/INODES_PER_SECTOR; //inode_sector will have the sector number that contains file_inode which is our required file inode.
 	char inode_buffer[SECTOR_SIZE];
         
         // from the line below, after Disk_read "inode_buffer" will contain the inode_sector's content 
