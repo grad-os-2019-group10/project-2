@@ -516,13 +516,41 @@ int remove_inode(int type, int parent_inode, int child_inode)
   char buffer[SECTOR_SIZE];
 
   // make sure read was successful
-  if (Disk_Read(child_sector, buffer) == 0)
-  {
-    dprintf("... reading child inode from table at sector %d\n", child_sector);
+  if (Disk_Read(child_sector, buffer) < 0) return -1;
 
-    
-    //inode_t* child = (inode_t*)
+  dprintf("... reading child inode from table at sector %d\n", child_sector);
+
+  // reusing code from the sample code here
+  int cached_start_entry = ((child_sector)-INODE_TABLE_START_SECTOR) *
+    INODES_PER_SECTOR;
+  int offset = child_inode-cached_start_entry;
+
+  assert(0 <= offset && offset < INODES_PER_SECTOR);
+  inode_t* child_inode_t = (inode_t*)(buffer+offset*sizeof(inode_t));
+
+  // ensure type consistency
+  if (type != child_inode_t->type)
+  {
+    dprintf("... ERROR: type given to remove_inode does not match found inode \
+      type\n");
+    // return -3 error code for wrong type
+    return -3;
   }
+
+  // if directory, ensure directory is non-empty
+  if (child_inode_t->type == 1 && child_inode_t->size > 0)
+  {
+    dprintf("... ERROR: remove_inode called on inode for non-empty directory\n");
+    return -2;
+  }
+
+  // if we got here, neither of the above error conditions are true, so delete
+  // the inode and update the disk sector
+  dprintf("... deleting inode &d and writing back to disk\n", child_inode);
+  memset(child_inode_t, 0, sizeof(inode_t));
+  if (Disk_Write(child_sector, buffer) < 0) return -1;
+
+  // TODO: Still need to reset inode bitmap to indicate inode was deleted
 
   return -1;
 }
@@ -1011,4 +1039,3 @@ int get_inode_from_path(char* path, inode_t** inode)
   }
   return -1;
 }
-
