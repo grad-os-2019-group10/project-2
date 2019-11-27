@@ -1,7 +1,7 @@
 # this is the Makefile to compile test cases
 
 CC     = gcc
-OPTS   = -O -Wall 
+OPTS   = -O -Wall -g
 INCS   = 
 LIBS   = -Wl,-R. -L. -lFS -lDisk
 SHLIBS = libDisk.so libFS.so

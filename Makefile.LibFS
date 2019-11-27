@@ -1,5 +1,5 @@
 CC     = gcc
-OPTS   = -Wall -fPIC
+OPTS   = -Wall -fPIC -g
 INCS   = 
 LIBS   = -L. -lDisk
 
