@@ -518,10 +518,10 @@ int remove_inode(int type, int parent_inode, int child_inode)
   // make sure read was successful
   if (Disk_Read(child_sector, buffer) == 0)
   {
-    // read child inode from table
     dprintf("... reading child inode from table at sector %d\n", child_sector);
 
-    // UNDER CONSTRUCTION
+    
+    //inode_t* child = (inode_t*)
   }
 
   return -1;
@@ -972,12 +972,43 @@ int Dir_Unlink(char* path)
 int Dir_Size(char* path)
 {
   /* YOUR CODE */
+  // UNTESTED, but uses nearly the same code as the sample code to get an inode,
+  // so it should work
+  inode_t* inode;
+  if (get_inode_from_path(path, &inode) >= 0)
+    return inode->size;
+
   return 0;
 }
 
 int Dir_Read(char* path, void* buffer, int size)
 {
   /* YOUR CODE */
+  return -1;
+}
+
+// given a path, finds the inode representing the file/directory at that path
+// returns 0 on success and assigns the found inode_t to `inode`
+int get_inode_from_path(char* path, inode_t** inode)
+{
+  char last_name[MAX_NAME];
+  int child_inode;
+  if (follow_path(path, &child_inode, last_name) >= 0)
+  {
+    assert(child_inode >= 0);
+
+    int cached_sector = INODE_TABLE_START_SECTOR;
+    char cached_buffer[SECTOR_SIZE];
+    if(Disk_Read(cached_sector, cached_buffer) < 0) return -1;
+
+    int cached_start_entry = ((cached_sector)-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
+    int offset = child_inode-cached_start_entry;
+
+    assert(0 <= offset && offset < INODES_PER_SECTOR);
+    *inode = (inode_t*)(cached_buffer+offset*sizeof(inode_t));
+
+    return 0;
+  }
   return -1;
 }
 
