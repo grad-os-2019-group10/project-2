@@ -550,7 +550,11 @@ int remove_inode(int type, int parent_inode, int child_inode)
   memset(child_inode_t, 0, sizeof(inode_t));
   if (Disk_Write(child_sector, buffer) < 0) return -1;
 
-  // TODO: Still need to reset inode bitmap to indicate inode was deleted
+   // reset bit of child inode in bitmap
+  if (bitmap_reset(INODE_BITMAP_START_SECTOR, INODE_BITMAP_SECTORS, child_inode) < 0) {
+    dprintf("... ERROR: unable to reset inode bit in bitmap at index %d\n", child_inode);
+    return -1;
+  }
 
   return -1;
 }
