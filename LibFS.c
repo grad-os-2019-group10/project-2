@@ -521,12 +521,12 @@ int remove_inode(int type, int parent_inode, int child_inode)
   dprintf("... reading child inode from table at sector %d\n", child_sector);
 
   // reusing code from the sample code here
-  int cached_start_entry = ((child_sector)-INODE_TABLE_START_SECTOR) *
+  int cached_start_entry = ((child_sector) - INODE_TABLE_START_SECTOR) *
     INODES_PER_SECTOR;
-  int offset = child_inode-cached_start_entry;
+  int offset = child_inode - cached_start_entry;
 
   assert(0 <= offset && offset < INODES_PER_SECTOR);
-  inode_t* child_inode_t = (inode_t*)(buffer+offset*sizeof(inode_t));
+  inode_t* child_inode_t = (inode_t*)(buffer + (offset * sizeof(inode_t)));
 
   // ensure type consistency
   if (type != child_inode_t->type)
@@ -546,17 +546,33 @@ int remove_inode(int type, int parent_inode, int child_inode)
 
   // if we got here, neither of the above error conditions are true, so delete
   // the inode and update the disk sector
-  dprintf("... deleting inode &d and writing back to disk\n", child_inode);
+  dprintf("... deleting inode %d and writing back to disk\n", child_inode);
   memset(child_inode_t, 0, sizeof(inode_t));
   if (Disk_Write(child_sector, buffer) < 0) return -1;
 
-   // reset bit of child inode in bitmap
+  // reset bit of child inode in bitmap
   if (bitmap_reset(INODE_BITMAP_START_SECTOR, INODE_BITMAP_SECTORS, child_inode) < 0) {
     dprintf("... ERROR: unable to reset inode bit in bitmap at index %d\n", child_inode);
     return -1;
   }
 
-  return -1;
+  // next, we need to update the parent inode to reflect the child has been deleted
+
+  // calculate the parent's sector
+  int parent_offset = parent_inode / INODES_PER_SECTOR;
+  int parent_sector = INODE_TABLE_START_SECTOR + parent_offset; 
+
+  // reusing code from the sample code, again, to get parent inode
+  cached_start_entry = (parent_sector - INODE_TABLE_START_SECTOR) * INODES_PER_SECTOR;
+  offset = parent_inode - cached_start_entry;
+  assert(0 <= offset && offset < INODES_PER_SECTOR);
+  inode_t* parent = (inode_t*)(buffer + offset * sizeof(inode_t));
+  dprintf("... get parent inode %d (size=%d, type=%d)\n",
+	  parent_inode, parent->size, parent->type);
+
+  // TODO: Scan dirents in parent inode, delete child inode, and write to disk
+
+  return 0;
 }
 
 // representing an open file
@@ -731,6 +747,14 @@ int File_Create(char* file)
 int File_Unlink(char* file)
 {
   /* YOUR CODE */
+
+  int child_inode;
+  char* child_fname[MAX_NAME];
+  int parent_inode = follow_path(file, &child_inode, &child_fname);
+
+  if (remove_inode(0, parent_inode, child_inode) == 0)
+    return 0;
+
   return -1;
 }
 
@@ -998,6 +1022,14 @@ int Dir_Create(char* path)
 int Dir_Unlink(char* path)
 {
   /* YOUR CODE */
+
+  int child_inode;
+  char* child_fname[MAX_NAME];
+  int parent_inode = follow_path(path, &child_inode, &child_fname);
+
+  if (remove_inode(1, parent_inode, child_inode) == 0)
+    return 0;
+
   return -1;
 }
 
