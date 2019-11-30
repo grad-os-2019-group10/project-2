@@ -27,7 +27,11 @@ int main(int argc, char *argv[])
   fn = "/second-file";
   if(File_Create(fn) < 0) printf("ERROR: can't create file '%s'\n", fn);
   else printf("file '%s' created successfully\n", fn);
-
+  
+  fn = "/third-file";
+  if(File_Create(fn) < 0) printf("ERROR: can't create file '%s'\n", fn);
+  else printf("file '%s' created successfully\n", fn);
+  
   fn = "/first-dir";
   if(Dir_Create(fn) < 0) printf("ERROR: can't create dir '%s'\n", fn);
   else printf("dir '%s' created successfully\n", fn);
@@ -56,7 +60,7 @@ int main(int argc, char *argv[])
   if(Dir_Unlink(fn) < 0) printf("ERROR: can't unlink dir '%s'\n", fn);
   else printf("dir '%s' unlinked successfully\n", fn);
 
-  fn = "/second-file";
+  fn = "/third-file";
   int fd = File_Open(fn);
   if(fd < 0) printf("ERROR: can't open file '%s'\n", fn);
   else printf("file '%s' opened successfully, fd=%d\n", fn, fd);
