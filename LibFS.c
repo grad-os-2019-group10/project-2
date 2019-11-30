@@ -381,6 +381,31 @@ static int follow_path(char* path, int* last_inode, char* last_fname)
   }
 }
 
+// given a path, finds the inode representing the file/directory at that path
+// returns 0 on success and assigns the found inode_t to `inode`
+int get_inode_from_path(char* path, inode_t** inode)
+{
+  char last_name[MAX_NAME];
+  int child_inode;
+  if (follow_path(path, &child_inode, last_name) >= 0)
+  {
+    assert(child_inode >= 0);
+
+    int cached_sector = INODE_TABLE_START_SECTOR;
+    char cached_buffer[SECTOR_SIZE];
+    if(Disk_Read(cached_sector, cached_buffer) < 0) return -1;
+
+    int cached_start_entry = ((cached_sector)-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
+    int offset = child_inode-cached_start_entry;
+
+    assert(0 <= offset && offset < INODES_PER_SECTOR);
+    *inode = (inode_t*)(cached_buffer+offset*sizeof(inode_t));
+
+    return 0;
+  }
+  return -1;
+}
+
 // add a new file or directory (determined by 'type') of given name
 // 'file' under parent directory represented by 'parent_inode'
 int add_inode(int type, int parent_inode, char* file)
@@ -584,7 +609,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
       if (dirent->inode == child_inode)
       {
         // child was found, so first, decrement the parent's dirent size by 1
-        parent->size == (parent->size) - 1;
+        parent->size = (parent->size) - 1;
         // then, remove the child
         memset(dirent, 0, sizeof(dirent_t));
         // write changes back to disk
@@ -772,9 +797,10 @@ int File_Unlink(char* file)
 {
   /* YOUR CODE */
 
+  dprintf("File_Unlink('%s'):\n", file);
   int child_inode;
-  char* child_fname[MAX_NAME];
-  int parent_inode = follow_path(file, &child_inode, &child_fname);
+  char child_fname[MAX_NAME];
+  int parent_inode = follow_path(file, &child_inode, child_fname);
 
   if (remove_inode(0, parent_inode, child_inode) == 0)
     return 0;
@@ -1070,9 +1096,10 @@ int Dir_Unlink(char* path)
 {
   /* YOUR CODE */
 
+  dprintf("Dir_Unlink('%s'):\n", path);
   int child_inode;
-  char* child_fname[MAX_NAME];
-  int parent_inode = follow_path(path, &child_inode, &child_fname);
+  char child_fname[MAX_NAME];
+  int parent_inode = follow_path(path, &child_inode, child_fname);
 
   if (remove_inode(1, parent_inode, child_inode) == 0)
     return 0;
@@ -1147,29 +1174,4 @@ int Dir_Read(char* path, void* buffer, int size) {
 
 	dprintf("Target directory size = %d\n", target_directory->size);
 	return target_directory->size;
-}
-
-// given a path, finds the inode representing the file/directory at that path
-// returns 0 on success and assigns the found inode_t to `inode`
-int get_inode_from_path(char* path, inode_t** inode)
-{
-  char last_name[MAX_NAME];
-  int child_inode;
-  if (follow_path(path, &child_inode, last_name) >= 0)
-  {
-    assert(child_inode >= 0);
-
-    int cached_sector = INODE_TABLE_START_SECTOR;
-    char cached_buffer[SECTOR_SIZE];
-    if(Disk_Read(cached_sector, cached_buffer) < 0) return -1;
-
-    int cached_start_entry = ((cached_sector)-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
-    int offset = child_inode-cached_start_entry;
-
-    assert(0 <= offset && offset < INODES_PER_SECTOR);
-    *inode = (inode_t*)(cached_buffer+offset*sizeof(inode_t));
-
-    return 0;
-  }
-  return -1;
 }
