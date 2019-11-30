@@ -834,33 +834,42 @@ int File_Read(int fd, void* buffer, int size)
                                                                          // desired file_inode content.so we are adding offset adress with starting address to get there.
                                                                          // Now, file will point to the file_inode.
 
-	// variables used to read
-	char buf[SECTOR_SIZE];
-	char* data = (char*) buffer;
-	int i, j; 
+	// Necessary variables needed for file_read
+        int i,j,count=0;
+        char* charBuffer = (char*) buffer;
+        char temp_buffer[SECTOR_SIZE];
 	int s_pos = open_files[fd].pos;
-	int count = 0;
+
 
 	// define start variables to read starting from file pointer
-	int start = open_files[fd].pos / SECTOR_SIZE; // start will have the sector number containing pos. pos, we know from the open_file structure that it read/write position
-	int startb = open_files[fd].pos % SECTOR_SIZE; // initialization of startb where it will have the specific byte number of that sector indicated by pos
+	int start_sector = open_files[fd].pos / SECTOR_SIZE; // start_sector will have the sector number containing pos. pos, we know from the open_file structure that it read/write position
+	int startbyte = open_files[fd].pos % SECTOR_SIZE; // initialization of startbyte where it will have the specific byte number of that sector indicated by pos
+ 
 
-	// loop through sectors in file's data array
-	for(i = start; i < MAX_SECTORS_PER_FILE; i++){
+
+	// while loop will read the content of the data sectors allocated to the file we want to read sequentially
+         i=start_sector;
+	
+         while(i < MAX_SECTORS_PER_FILE)
+         {
 		if (file->data[i]) // "file->data[i]" from the specific inode will provide the sector numbers containg the data for the file, one by one.
                       {
-			Disk_Read(file->data[i], buf); // Disk_Read will read the sector data which will be read into buf. 
-			dprintf("Buf contents: %s", buf);
-			for(j = startb; j < SECTOR_SIZE; j++){	// looping through bytes , for first sector it may start from any other postition rather than 0.
-				if (count+s_pos < file->size && count < size){	// while still inside of the file & reading into size of buffer
-					data[count++] = buf[j]; // content of buf will be copied to data buffer. at first iteration it will be started from pos
-                                                                // later on it will start copying from first position of buf.
+			Disk_Read(file->data[i], temp_buffer); // Disk_Read will read the sector data which will be read into a temporary buffer named temp_buffer. 
+			dprintf("\n From sector %d we have Buffer contents: %s", file->data[i], temp_buffer);
+                        j=startbyte;  //for first sector it may start from any other postition rather than 0.
+			while(j < SECTOR_SIZE)
+                        {	
+				if ((count+s_pos < file->size) && (count < size)){	// while still inside of the file & reading into size of buffer
+					charBuffer[count++] = temp_buffer[j]; // content of temporary buffer will be copied to charbuffer. at first iteration it will be started from pos
+                                                                // later on it will start copying from first position of temp_buffer.
 				} 
+                        j++;
 			}
 	
-			startb = 0; // after the first sector, the later sectors will be read fully , so startb (start byte) will be 0 here for reading buf
+			startbyte = 0; // after the first sector, the later sectors will be read fully , so startb (start byte) will be 0 here for reading buf
                                     // so reset
 		}
+        i++;
 	}
 	
 	open_files[fd].pos += count; // value of the pos variable will be updated with new one
@@ -868,7 +877,6 @@ int File_Read(int fd, void* buffer, int size)
 	return count; // by returning count, the function is providing the number of bytes actually read which can be less than or equal to size.
 }
  
-
 
 int File_Write(int fd, void* buffer, int size)
 {
@@ -908,58 +916,75 @@ int File_Write(int fd, void* buffer, int size)
 		return -1;
 	}
         
-        // Necessary variables
-	int i, j;
-	char buf[SECTOR_SIZE];
-	char* data = (char*) buffer;
-	int tempSize = size;
-	int count = 0;
+        // Necessary variables needed for file_write
+	int i, j,count=0;
+	char* charBuffer = (char*) buffer;
+	int t_size = size;
+        char temp_buffer[SECTOR_SIZE];
 
-	// define location to write from using file pointer
-	int start = open_files[fd].pos / SECTOR_SIZE; // start will have the sector number containing pos. pos, we know from the open_file structure that it is read/write position
-	int startb = open_files[fd].pos % SECTOR_SIZE; // initialization of startb where it will have the specific byte number of that sector indicated by pos 
+        // We may have to write data to a sector from starting byte or pos can be in any other byte
 
-	// loop through sectors in file's data array
-	for(i = start; i < MAX_SECTORS_PER_FILE && count < size; i++){ 
-		//if we are writing in already allocated sectors
-		if (file->data[i]){ // "file->data[i]" from the specific inode will provide the sector number where to write 
-			Disk_Read(file->data[i], buf); // Disk_Read will read the previously existing sector data which will be saved into buf.
-			for(j = startb; j < SECTOR_SIZE; j++){
+	int start_sector = open_files[fd].pos / SECTOR_SIZE; // start_sector will have the sector number containing pos. pos, we know from the open_file structure that it is read/write position
+	int startbyte = open_files[fd].pos % SECTOR_SIZE; // initialization of startb where it will have the specific byte number of that sector indicated by pos 
+
+	// while loop will write the content of buffer to the data sectors allocated to the file sequentially. 
+        // first have to check if we will start writing to an already existing sector or have to allocate e new one before writing. 
+        i=start_sector;
+        while((i < MAX_SECTORS_PER_FILE) && (count<t_size))
+        {       
+		
+               //if we are writing in an already allocated sectors
+		if (file->data[i]) // "file->data[i]" from the specific inode will provide the sector number where to write
+                {  
+			Disk_Read(file->data[i], temp_buffer); // Disk_Read will read the previously existing sector data which will be saved into buf.
+                        j=startbyte;
+			while(j < SECTOR_SIZE)
+                        {
 				// write data to buffer
-				if(tempSize-- > 0) 
-                                    buf[j] = data[count++]; // data[] has the content to write in the sector. It will be copied to buf[] from the startb index 
-                                                           // that is from the byte we want to write the data[] value.
+				if(size-- > 0) 
+                                    temp_buffer[j] = charBuffer[count++]; // buffer[] has the content to write in the sector. It will be copied to temp_buffer[] from the startbyte index 
+                                                           // that is from the byte we want to write the buffer[] value.
+                        j++;
+
 			}
-			startb = 0; // after the first sector, in the later sectors data[] will written from the starting syte , so startb (start byte ) will be 0 here for writing
-                                    // so reset
+			startbyte = 0; // after the first sector, in the later sectors buffer[] will written from the starting byte , so startbyte will be 0 here for writing
+                                      // so reset
 
-			dprintf("SECTOR %d: %s\n", file->data[i], buf); // print the contents of particular sectors
+			dprintf("In sector %d we are writing: %s\n", file->data[i], temp_buffer); // print the contents of particular sectors
 
-			Disk_Write(file->data[i], buf); // Now, Disk_Write will write the buf content into the sector specified by "file->data[i]" 
+			Disk_Write(file->data[i], temp_buffer); // Now, Disk_Write will write the temp_buff content into the sector specified by "file->data[i]" 
 		}
-		else {   // if "file->data[i]" won't provide any sector index that means we have to write into a new file sector which is not yet allocated to that file
-			//thus have to allocate new sector 
-			int newsec = bitmap_first_unused(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, SECTOR_BITMAP_SIZE);
-			if(newsec == -1){ //if there is no new sector available, the write cannot be completed due to a lack of space on disk. It will set osErrno to E_NO_SPACE.
+		else // if "file->data[i]" won't provide any sector index that means we have to write into a new file sector which is not yet allocated to that file
+                    //thus have to allocate new sector 
+                {   
+			
+			int newsector = bitmap_first_unused(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, SECTOR_BITMAP_SIZE);
+			if(newsector == -1) //if there is no new sector available, the write cannot be completed due to a lack of space on disk. It will set osErrno to E_NO_SPACE.
+                        {
 				osErrno = E_NO_SPACE; 
 				return -1;
 			}
-			file->data[i] = newsec; // "file->data[i]" value will be updated with new sector value newsec 
+			file->data[i] = newsector; // "file->data[i]" value will be updated with new sector value newsector 
 
-			char newbuf[SECTOR_SIZE];
+			char temp_buffer2[SECTOR_SIZE];
 
-			memset(newbuf, 0, SECTOR_SIZE); // newbuf will be intialized with 0 upto SECTOR_SIZE (512B here)
+			memset(temp_buffer2, 0, SECTOR_SIZE); // temp_buffer will be intialized with 0 upto SECTOR_SIZE (512B here)
+                        
+                        j=0;
 
-			for(j = 0; j < SECTOR_SIZE; j++){
-				// write to buffer
-				if(tempSize-- > 0)
-                                   newbuf[j] = data[count++]; // data[] has the content to write in the sector. It will be copied to newbuf[] from the data[]
+			while(j < SECTOR_SIZE)
+                        {
+				// write to temp_buffer2
+				if(size-- > 0)
+                                   temp_buffer2[j] = charBuffer[count++]; // buffer[] has the content to write in the sector. It will be copied to temp_buffer2[] from the buffer[]
+                         j++;
 			}
 
 			//save changes
-			dprintf("NEW SECTOR %d: %s\n", file->data[i], newbuf); 
-			Disk_Write(file->data[i], newbuf);// Now, Disk_Write will write the newbuf content into the sector specified by "file->data[i]" 
+			dprintf("\nIn new sector %d we are writing: %s\n", file->data[i], temp_buffer2); 
+			Disk_Write(file->data[i], temp_buffer2);// Now, Disk_Write will write the temp_buffer2 content into the sector specified by "file->data[i]" 
 		}
+           i++;
 	}
 
 	//save changes 
@@ -971,8 +996,6 @@ int File_Write(int fd, void* buffer, int size)
 
 	return size;
 }
-
-
 int File_Seek(int fd, int offset)
 {
   /* YOUR CODE */
