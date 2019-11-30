@@ -570,7 +570,31 @@ int remove_inode(int type, int parent_inode, int child_inode)
   dprintf("... get parent inode %d (size=%d, type=%d)\n",
 	  parent_inode, parent->size, parent->type);
 
-  // TODO: Scan dirents in parent inode, delete child inode, and write to disk
+  // reusing more sample code here, modified to fit this method
+  int nentries = parent->size; // remaining number of directory entries
+  int idx = 0;
+  while (nentries > 0)
+  {
+    char buf[SECTOR_SIZE]; // cached content of directory entries
+    if (Disk_Read(parent->data[idx], buf) < 0)
+      return -2;
+    for (int i = 0; i < DIRENTS_PER_SECTOR; i++)
+    {
+      dirent_t* dirent = (dirent_t*)(buf + i * (sizeof(dirent_t)));
+      if (dirent->inode == child_inode)
+      {
+        // child was found, so first, decrement the parent's dirent size by 1
+        parent->size == (parent->size) - 1;
+        // then, remove the child
+        memset(dirent, 0, sizeof(dirent_t));
+        // write changes back to disk
+        Disk_Write(parent->data[i], buf);
+        Disk_Write(parent_sector, buffer);
+      }
+    }
+    idx++;
+    nentries -= DIRENTS_PER_SECTOR;
+  }
 
   return 0;
 }
