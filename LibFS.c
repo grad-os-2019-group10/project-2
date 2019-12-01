@@ -391,13 +391,13 @@ int get_inode_from_path(char* path, inode_t** inode)
   {
     assert(child_inode >= 0);
 
-    int cached_sector = INODE_TABLE_START_SECTOR;
+    int inode_sector = INODE_TABLE_START_SECTOR+child_inode/INODES_PER_SECTOR;
     char cached_buffer[SECTOR_SIZE];
-    if(Disk_Read(cached_sector, cached_buffer) < 0) return -1;
+    if(Disk_Read(inode_sector, cached_buffer) < 0) return -1;
 
-    int cached_start_entry = ((cached_sector)-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
+    int cached_start_entry = ((inode_sector)-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
     int offset = child_inode-cached_start_entry;
-
+    
     assert(0 <= offset && offset < INODES_PER_SECTOR);
     *inode = (inode_t*)(cached_buffer+offset*sizeof(inode_t));
 
@@ -613,7 +613,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
         // then, remove the child
         memset(dirent, 0, sizeof(dirent_t));
         // write changes back to disk
-        Disk_Write(parent->data[i], buf);
+        Disk_Write(parent->data[idx], buf);
         Disk_Write(parent_sector, buffer);
       }
     }
