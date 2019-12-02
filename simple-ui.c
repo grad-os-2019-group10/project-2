@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <unistd.h>
 #include "LibFS.h"
 
 #define BFSZ 256
@@ -76,8 +76,13 @@ int main(int argc, char *argv[])
         {
         case 1:
             prompt(in, BFSZ, "Please enter the path of the file to create.\n");
-            File_Create(in);
-            usleep(1000000);
+            if (File_Create(in) < 0)
+            {
+                printf("ERROR: can't create file '%s'\n", in);
+                break;
+            }
+            printf("File '%s' created.\n", in);
+            sleep(1);
             break;
         case 2:
             prompt(in, BFSZ, "Please enter the path of the file to read.\n");
@@ -95,8 +100,7 @@ int main(int argc, char *argv[])
                     break;
                 }
                 printf("\n\nContents of file %s:\n\n", in);
-                buf[sz] = '\0';
-                printf("%s\n", buf);
+                printf("%s\n\n", buf);
             } while(sz > 0);
             
             File_Close(fd);
@@ -106,7 +110,7 @@ int main(int argc, char *argv[])
                 printf("ERROR: can't sync disk '%s'\n", diskfile);
                 break;
             }
-            usleep(1000000);
+            sleep(1);
             break;
         case 3:
             prompt(in, BFSZ, "Please enter the path of the file to write to.\n");
@@ -135,7 +139,7 @@ int main(int argc, char *argv[])
             }
             else 
                 printf("fd %d closed successfully\n", fd);
-            usleep(1000000);
+            sleep(1);
             break;
         case 4:
             prompt(in, BFSZ, "Please enter the path of the file to delete.\n");
@@ -144,21 +148,28 @@ int main(int argc, char *argv[])
                 printf("ERROR: can't delete file '%s'\n", in);
                 break;
             }
-            usleep(1000000);
+            sleep(1);
             break;
         case 5:
             prompt(in, BFSZ, "Please enter the path of the directory to create.\n");
-            Dir_Create(in);
-            usleep(1000000);
+            if (Dir_Create(in) < 0)
+            {
+                printf("ERROR: can't create directory '%s'\n", in);
+                break;
+            }
+            printf("Directory '%s' created.\n", in);
+            sleep(1);
             break;
         case 6:
             prompt(in, BFSZ, "Please enter the path of the directory to query.\n");
-            if(Dir_Size(in) < 0)
+            int dirsz = Dir_Size(in);
+            if(dirsz < 0)
             {
                 printf("ERROR: can't get size of '%s'\n", in);
                 break;
             }
-            usleep(1000000);
+            printf("Directory %s contains %d files.\n", in, dirsz);
+            sleep(1);
             break;
         case 7:
             prompt(in, BFSZ, "Please enter the path of the directory to delete.\n");
@@ -167,7 +178,8 @@ int main(int argc, char *argv[])
                 printf("ERROR: can't delete directory '%s'\n", in);
                 break;
             }
-            usleep(1000000);
+            printf("Directory '%s' successfully deleted.\n", in);
+            sleep(1);
             break;
         case 8:
             exit = 1;

@@ -7,7 +7,7 @@
 #include "LibFS.h"
 
 // set to 1 to have detailed debug print-outs and 0 to have none
-#define FSDEBUG 1
+#define FSDEBUG 0
 
 #if FSDEBUG
 #define dprintf printf
