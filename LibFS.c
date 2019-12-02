@@ -981,7 +981,7 @@ int File_Write(int fd, void* buffer, int size)
 	// while loop will write the content of buffer to the data sectors allocated to the file sequentially. 
         // first have to check if we will start writing to an already existing sector or have to allocate e new one before writing. 
         i=start_sector;
-        while((i < MAX_SECTORS_PER_FILE) && (count<t_size))
+        while((i < MAX_SECTORS_PER_FILE) && (count<size))
         {       
 		
                //if we are writing in an already allocated sectors
@@ -992,7 +992,7 @@ int File_Write(int fd, void* buffer, int size)
 			while(j < SECTOR_SIZE)
                         {
 				// write data to buffer
-				if(size-- > 0) 
+				if(t_size-- > 0) 
                                     temp_buffer[j] = charBuffer[count++]; // buffer[] has the content to write in the sector. It will be copied to temp_buffer[] from the startbyte index 
                                                            // that is from the byte we want to write the buffer[] value.
                         j++;
@@ -1026,7 +1026,7 @@ int File_Write(int fd, void* buffer, int size)
 			while(j < SECTOR_SIZE)
                         {
 				// write to temp_buffer2
-				if(size-- > 0)
+				if(t_size-- > 0)
                                    temp_buffer2[j] = charBuffer[count++]; // buffer[] has the content to write in the sector. It will be copied to temp_buffer2[] from the buffer[]
                          j++;
 			}
