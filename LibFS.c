@@ -803,10 +803,7 @@ int File_Unlink(char* file)
   char child_fname[MAX_NAME];
   int parent_inode = follow_path(file, &child_inode, child_fname);
 
-  if (remove_inode(0, parent_inode, child_inode) == 0)
-    return 0;
-
-  return -1;
+  return remove_inode(0, parent_inode, child_inode);
 }
 
 int File_Open(char* file)
@@ -1102,10 +1099,7 @@ int Dir_Unlink(char* path)
   char child_fname[MAX_NAME];
   int parent_inode = follow_path(path, &child_inode, child_fname);
 
-  if (remove_inode(1, parent_inode, child_inode) == 0)
-    return 0;
-
-  return -1;
+  return remove_inode(1, parent_inode, child_inode);
 }
 
 int Dir_Size(char* path)
