@@ -11,7 +11,8 @@ SRCS   = main.c \
 	slow-ls.c slow-mkdir.c slow-rmdir.c \
 	slow-touch.c slow-rm.c \
 	slow-cat.c slow-import.c slow-export.c \
-	file_create.c file_seek.c file_write.c
+	file_create.c file_seek.c file_write.c \
+	simple-ui.c
 
 OBJS   = $(SRCS:.c=.o)
 TARGETS = $(SRCS:.c=.exe)

@@ -621,6 +621,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
     nentries -= DIRENTS_PER_SECTOR;
   }
 
+  dprintf("... inode %d successfully unlinked\n", child_inode);
   return 0;
 }
 
