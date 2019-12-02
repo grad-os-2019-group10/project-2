@@ -1,18 +1,16 @@
-This directory contains a partial implementation of the simple file
-system for project 4. The partial implementation is in
-LibFS.c; it's heavily commented code so hopefully the implementation
-is self-explanatory. The places marked as YOUR CODE are to be filled
-in by your implementation.
+# Project 2: File System Management
 
-NOTE THAT THE IMPLEMENTATION PROVIDED HERE IS PURELY DESIGNED TO HELP
-YOU COMPLETE THE TASK. YOU DO NOT HAVE TO FOLLOW THE IMPLEMENTATION.
-BUT IF YOU DO, PAY ATTENTION TO THE DETAILS. THERE IS NOT GUARANTEE
-THAT THE PROVIDED PARTIAL IMPLEMENTATION IS BUG-FREE CODE OR CONSIDERS
-ALL POSSIBLE SCENARIOS.
+## COP 5614 – Operating Systems Principles
 
-The directory also contains a number of test applications implmement
-file system commands, including ls, mkdir, cat, rm, rmdir. The touch
-command is to create an empty file. The import and export commands
-used for copying a unix file into and out from our simple file system.
+### Group Members
+Ahmed Imteaj (6146158), Nusrath Jahan (6152975), Matt Taylor (5848958)
 
-Enjoy coding!
+### Compiling
+To compile the source, simply run `make` within this directory. This will build the LibFS library, as well as several test programs you can use to experiment with file systems.
+
+This program was built on and compiles for **Linux**; it is NOT cross-platform and will most likely NOT work on Windows.
+
+### Testing
+The sample programs allow you to experiment with LibFS. `simple-ui.exe` opens up a convenient interface to run several different operations and manipulate files in the file system, while programs like `slow-touch.exe`, `slow-cat.exe`, and `slow-mkdir.exe` allow you to experiment with atomic operations equivalent to their usual commands (`touch`, `cat`, and `mkdir`, respectively).
+
+The default disk image file for most of the programs is `default-disk`, but most sample programs will also accept a custom disk image name and automatically create a file system with that name.
