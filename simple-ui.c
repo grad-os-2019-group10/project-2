@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
             fd = File_Open(in);
             if(fd < 0) {
                 printf("ERROR: can't open file '%s'\n", in);
-                return -2;
+                break;
             }
 
             char buf[BFSZ+1]; int sz;
@@ -137,8 +137,7 @@ int main(int argc, char *argv[])
                 printf("ERROR: can't close fd %d\n", fd);
                 break;
             }
-            else 
-                printf("fd %d closed successfully\n", fd);
+            printf("fd %d closed successfully\n", fd);
             sleep(1);
             break;
         case 4:
@@ -148,6 +147,7 @@ int main(int argc, char *argv[])
                 printf("ERROR: can't delete file '%s'\n", in);
                 break;
             }
+            printf("File '%s' successfully deleted.\n", in);
             sleep(1);
             break;
         case 5:
