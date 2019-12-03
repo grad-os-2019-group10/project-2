@@ -12,6 +12,13 @@ void usage(char *prog)
     exit(1);
 }
 
+int pause()
+{
+    printf("\nPress return to continue...\n");
+    getchar();
+    return 0;
+}
+
 // Displays a given prompt to the user and returns
 // the given input string to output, limited by
 // size sz
@@ -35,7 +42,8 @@ char menu[] = "\nPlease select an operation\n"
             "5. Create a directory\n"
             "6. See the size of a directory\n"
             "7. Delete a directory\n"
-            "8. Exit the filesystem\n\n";
+            "8. See the contents of a directory\n"
+            "9. Exit the filesystem\n\n";
 
 int main(int argc, char *argv[])
 {
@@ -60,15 +68,17 @@ int main(int argc, char *argv[])
         if (prompt(in, BFSZ, menu) < 0)
         {
             printf("ERROR: invalid input");
+            pause();
             continue;
         }
 
         int choice = atoi(in);
         int fd;
 
-        if (choice < 1 || choice > 8)
+        if (choice < 1 || choice > 9)
         {
             printf("ERROR: invalid choice.\n");
+            pause();
             continue;
         }
 
@@ -82,7 +92,7 @@ int main(int argc, char *argv[])
                 break;
             }
             printf("File '%s' created.\n", in);
-            sleep(1);
+            pause();
             break;
         case 2:
             prompt(in, BFSZ, "Please enter the path of the file to read.\n");
@@ -110,7 +120,7 @@ int main(int argc, char *argv[])
                 printf("ERROR: can't sync disk '%s'\n", diskfile);
                 break;
             }
-            sleep(1);
+            pause();
             break;
         case 3:
             prompt(in, BFSZ, "Please enter the path of the file to write to.\n");
@@ -138,7 +148,7 @@ int main(int argc, char *argv[])
                 break;
             }
             printf("fd %d closed successfully\n", fd);
-            sleep(1);
+            pause();
             break;
         case 4:
             prompt(in, BFSZ, "Please enter the path of the file to delete.\n");
@@ -148,7 +158,7 @@ int main(int argc, char *argv[])
                 break;
             }
             printf("File '%s' successfully deleted.\n", in);
-            sleep(1);
+            pause();
             break;
         case 5:
             prompt(in, BFSZ, "Please enter the path of the directory to create.\n");
@@ -158,7 +168,7 @@ int main(int argc, char *argv[])
                 break;
             }
             printf("Directory '%s' created.\n", in);
-            sleep(1);
+            pause();
             break;
         case 6:
             prompt(in, BFSZ, "Please enter the path of the directory to query.\n");
@@ -169,7 +179,7 @@ int main(int argc, char *argv[])
                 break;
             }
             printf("Directory %s contains %d files.\n", in, dirsz);
-            sleep(1);
+            pause();
             break;
         case 7:
             prompt(in, BFSZ, "Please enter the path of the directory to delete.\n");
@@ -179,9 +189,35 @@ int main(int argc, char *argv[])
                 break;
             }
             printf("Directory '%s' successfully deleted.\n", in);
-            sleep(1);
+            pause();
             break;
         case 8:
+            prompt(in, BFSZ, "Please enter the path of the directory to scan.\n");
+            sz = Dir_Size(in);
+            if(sz < 0) {
+                printf("ERROR: can't list '%s'\n", in);
+                break;
+            } else if (sz == 0) {
+                printf("directory '%s': empty\n", in);
+                break;
+            }
+
+            char buff[512];
+            int entries = Dir_Read(in, buff, 512);
+            if(entries < 0) {
+                printf("ERROR: can't list '%s'\n", in);
+                break;
+            }
+            
+            printf("directory '%s':\n     %-15s\t%-s\n", in, "NAME", "INODE");
+            int idx = 0;
+            for(int i=0; i<entries; i++) {
+                printf("%-4d %-15s\t%-d\n", i, &buff[idx], *(int*)&buff[idx+16]);
+                idx += 20;
+            }
+            pause();
+            break;
+        case 9:
             exit = 1;
             break;
         }

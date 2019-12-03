@@ -7,7 +7,7 @@
 #include "LibFS.h"
 
 // set to 1 to have detailed debug print-outs and 0 to have none
-#define FSDEBUG 0
+#define FSDEBUG 1
 
 #if FSDEBUG
 #define dprintf printf
@@ -530,28 +530,20 @@ int remove_inode(int type, int parent_inode, int child_inode)
 
   // first, read the sector containing the child inode
 
-  // calculate the child's sector
-  int child_offset = child_inode / INODES_PER_SECTOR;
-  int child_sector = INODE_TABLE_START_SECTOR + child_offset; 
-
   dprintf("... removing inode %d from parent %d\n", child_inode, parent_inode);
 
-  // an inode size is guaranteed to be less than the size of a sector, so
-  // it's safe to use SECTOR_SIZE for this buffer's size
-  char buffer[SECTOR_SIZE];
-
-  // make sure read was successful
-  if (Disk_Read(child_sector, buffer) < 0) return -1;
-
-  dprintf("... reading child inode from table at sector %d\n", child_sector);
+  int inode_sector = INODE_TABLE_START_SECTOR + child_inode / INODES_PER_SECTOR;
+  char inode_buffer[SECTOR_SIZE];
+  if(Disk_Read(inode_sector, inode_buffer) < 0) { osErrno = E_GENERAL; return -1; }
+  dprintf("... load inode table for inode from disk sector %d\n", inode_sector);
 
   // reusing code from the sample code here
-  int cached_start_entry = ((child_sector) - INODE_TABLE_START_SECTOR) *
+  int cached_start_entry = ((inode_sector) - INODE_TABLE_START_SECTOR) *
     INODES_PER_SECTOR;
   int offset = child_inode - cached_start_entry;
 
   assert(0 <= offset && offset < INODES_PER_SECTOR);
-  inode_t* child_inode_t = (inode_t*)(buffer + (offset * sizeof(inode_t)));
+  inode_t* child_inode_t = (inode_t*)(inode_buffer + (offset * sizeof(inode_t)));
 
   // ensure type consistency
   if (type != child_inode_t->type)
@@ -573,7 +565,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
   // the inode and update the disk sector
   dprintf("... deleting inode %d and writing back to disk\n", child_inode);
   memset(child_inode_t, 0, sizeof(inode_t));
-  if (Disk_Write(child_sector, buffer) < 0) return -1;
+  if (Disk_Write(inode_sector, inode_buffer) < 0) return -1;
 
   // reset bit of child inode in bitmap
   if (bitmap_reset(INODE_BITMAP_START_SECTOR, INODE_BITMAP_SECTORS, child_inode) < 0) {
@@ -584,45 +576,128 @@ int remove_inode(int type, int parent_inode, int child_inode)
   // next, we need to update the parent inode to reflect the child has been deleted
 
   // calculate the parent's sector
-  int parent_offset = parent_inode / INODES_PER_SECTOR;
-  int parent_sector = INODE_TABLE_START_SECTOR + parent_offset; 
+  inode_sector = INODE_TABLE_START_SECTOR + parent_inode/ INODES_PER_SECTOR;
+  if(Disk_Read(inode_sector, inode_buffer) < 0) { osErrno = E_GENERAL; return -1; }
+  dprintf("... load inode table for inode from disk sector %d\n", inode_sector);
 
   // reusing code from the sample code, again, to get parent inode
-  cached_start_entry = (parent_sector - INODE_TABLE_START_SECTOR) * INODES_PER_SECTOR;
+  cached_start_entry = (inode_sector - INODE_TABLE_START_SECTOR) * INODES_PER_SECTOR;
   offset = parent_inode - cached_start_entry;
+
   assert(0 <= offset && offset < INODES_PER_SECTOR);
-  inode_t* parent = (inode_t*)(buffer + offset * sizeof(inode_t));
+
+  inode_t* parent = (inode_t*)(inode_buffer + offset * sizeof(inode_t));
   dprintf("... get parent inode %d (size=%d, type=%d)\n",
 	  parent_inode, parent->size, parent->type);
 
   // reusing more sample code here, modified to fit this method
-  int nentries = parent->size; // remaining number of directory entries
-  int idx = 0;
-  while (nentries > 0)
-  {
-    char buf[SECTOR_SIZE]; // cached content of directory entries
-    if (Disk_Read(parent->data[idx], buf) < 0)
+  int deleted = 0;
+  int total_sectors = (parent->size + DIRENTS_PER_SECTOR - 1) / DIRENTS_PER_SECTOR;
+  // remainder here: if value is > 0 then there is a partial dirent sector
+  int remain_dirents = (parent->size % DIRENTS_PER_SECTOR);
+  int num_dirents = 0;
+    
+  char buf[SECTOR_SIZE]; // cached content of directory entries
+  dirent_t *dirent, *final;
+  int idx_sector, idx_dirent;
+
+  for (idx_sector = 0; idx_sector < total_sectors; idx_sector++)
+  { 
+    if (Disk_Read(parent->data[idx_sector], buf) < 0)
       return -2;
-    for (int i = 0; i < DIRENTS_PER_SECTOR; i++)
+
+    for (idx_dirent = 0; idx_dirent < DIRENTS_PER_SECTOR; idx_dirent++)
     {
-      dirent_t* dirent = (dirent_t*)(buf + i * (sizeof(dirent_t)));
-      if (dirent->inode == child_inode)
+      num_dirents++;
+
+      if (deleted == 0 && num_dirents < parent->size)
       {
-        // child was found, so first, decrement the parent's dirent size by 1
-        parent->size = (parent->size) - 1;
-        // then, remove the child
-        memset(dirent, 0, sizeof(dirent_t));
-        // write changes back to disk
-        Disk_Write(parent->data[idx], buf);
-        Disk_Write(parent_sector, buffer);
+        dirent = (dirent_t*)(buf + idx_dirent * sizeof(dirent_t));
+        // the following cases are necessary to handle edge cases when a file is deleted in a filesystem
+        // also containing a directory. in such a case, naively deleting the child dirent and returning
+        // can result in an inconsistent state where inodes are repeated and files cannot be read.
+        if (dirent->inode == child_inode)
+        {
+          // if this is true, it means the child dirent and final dirent are in the same sector
+          if (idx_sector == total_sectors - 1)
+          {
+            final = (dirent_t*)(buf + ((remain_dirents - 1) * sizeof(dirent_t)));
+            memcpy(dirent, final, sizeof(dirent_t));
+            memset(final, 0, sizeof(dirent_t));
+
+            // write to disk the updated sector
+            if (Disk_Write(parent->data[idx_sector], buf) < 0)
+            {
+              dprintf("... error writing to parent data\n");
+              return -1;
+            }
+            dprintf("... successfully deleted dirent for child inode %d\n", child_inode);
+            deleted = 1;
+          }
+          else
+          {
+            // otherwise, the child inode exists but is not in the final sector
+            char final_buf[SECTOR_SIZE];
+
+            if (Disk_Read(parent->data[total_sectors - 1], final_buf) < 0)
+            {
+              dprintf("... error reading final sector of parent %d\n", parent_inode);
+              return -1;
+            }
+
+            final = (dirent_t*)(final_buf + ((remain_dirents - 1) * sizeof(dirent_t)));
+            memcpy(dirent, final, sizeof(dirent_t));
+            memset(final, 0, sizeof(dirent_t));
+
+            if (Disk_Write(parent->data[idx_sector], buf) < 0)
+            {
+              dprintf("... error writing to parent data\n");
+              return -1;
+            }
+            if (Disk_Write(parent->data[total_sectors - 1], final_buf) < 0)
+            {
+              dprintf("... error writing final sector to parent data\n");
+              return -1;
+            }
+            dprintf("... successfully deleted dirent for child inode %d\n", child_inode);
+            deleted = 1;
+          }
+        }
+      }
+      else if (deleted == 0)
+      {
+        // if we get here, it means the child is the last dirent in the parent
+        if (dirent->inode ==  child_inode)
+        {
+            memset(dirent, 0, sizeof(dirent_t));
+            if (Disk_Write(parent->data[idx_sector], buf) < 0)
+            {
+              dprintf("... error writing to final dirent of parent\n");
+              return -1;
+            }
+            deleted = 1;
+        }
+        else
+        {
+          dprintf("... error: could not find child dirent in parent\n");
+          return -1;
+        }
       }
     }
-    idx++;
-    nentries -= DIRENTS_PER_SECTOR;
   }
 
-  dprintf("... inode %d successfully unlinked\n", child_inode);
-  return 0;
+  parent->size--;
+
+  if (Disk_Write(inode_sector, inode_buffer) < 0)
+  {
+    dprintf("... error writing updated inode table to disk\n");
+    return 1;
+  }
+  else
+  {
+    dprintf("... inode %d successfully unlinked\n", child_inode);
+    return 0;
+  }
 }
 
 // representing an open file
