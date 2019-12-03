@@ -28,9 +28,9 @@ int main(int argc, char *argv[])
     printf("directory '%s': empty\n", path);
     return 0;
   }
-  
-  char* buf = malloc(sz);
-  int entries = Dir_Read(path, buf, sz);
+
+  char buf[512];
+  int entries = Dir_Read(path, buf, 512);
   if(entries < 0) {
     printf("ERROR: can't list '%s'\n", path);
     return -3;
@@ -42,7 +42,6 @@ int main(int argc, char *argv[])
     printf("%-4d %-15s\t%-d\n", i, &buf[idx], *(int*)&buf[idx+16]);
     idx += 20;
   }
-  free(buf);
 
   if(FS_Sync() < 0) {
     printf("ERROR: can't sync disk '%s'\n", diskfile);
