@@ -610,7 +610,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
     {
       num_dirents++;
 
-      if (deleted == 0 && num_dirents < parent->size)
+      if (deleted == 0 && num_dirents <= parent->size)
       {
         dirent = (dirent_t*)(buf + idx_dirent * sizeof(dirent_t));
         // the following cases are necessary to handle edge cases when a file is deleted in a filesystem
