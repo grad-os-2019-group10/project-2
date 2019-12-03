@@ -7,7 +7,7 @@
 #include "LibFS.h"
 
 // set to 1 to have detailed debug print-outs and 0 to have none
-#define FSDEBUG 1
+#define FSDEBUG 0
 
 #if FSDEBUG
 #define dprintf printf
@@ -664,7 +664,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
           }
         }
       }
-      else if (deleted == 0)
+      else if (deleted == 0 && dirent)
       {
         // if we get here, it means the child is the last dirent in the parent
         if (dirent->inode ==  child_inode)
